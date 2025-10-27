@@ -4,16 +4,25 @@ const cache = require('./cache')
 
 function startProxy(port, origin) {
   const app = express()
+app.get('/cache/stats', (req, res) => {
+  res.json(cache.stats())
+})
 
-  app.use(async (req, res) => {
+app.use(async (req, res) => {
     const cacheKey = req.originalUrl
 
     if (cache.has(cacheKey)) {
+      cache.addHit()
+      console.log(`✅ HIT: ${cacheKey}`)
+
       const cached = cache.get(cacheKey)
       res.set(cached.headers)
       res.set('X-Cache', 'HIT')
       res.status(cached.status).send(cached.data)
     } else {
+      cache.addMiss()
+      console.log(`🚫 MISS: ${cacheKey}`)
+
       try {
         const url = `${origin}${req.originalUrl}`
         const response = await axios.get(url)
